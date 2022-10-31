@@ -20,6 +20,8 @@ https://github.com/code-423n4/2022-10-blur
 
 ![](exchange_architecture.png)
 
+https://etherscan.io/viewsvg?t=1&a=0x39da41747a83aeE658334415666f3EF92DD0D541
+
 ![](mainnet-0x39da41747a83aee658334415666f3ef92dd0d541.svg)
 
 ### (1) BlurExchange
