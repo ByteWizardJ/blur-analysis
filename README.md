@@ -16,6 +16,8 @@ BlurExchange
 
 https://etherscan.io/address/0x000000000000ad05ccc4f10045630fb830b95127
 
+https://github.com/code-423n4/2022-10-blur
+
 ![](exchange_architecture.png)
 
 ![](mainnet-0x39da41747a83aee658334415666f3ef92dd0d541.svg)
