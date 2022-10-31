@@ -117,7 +117,8 @@ function execute(Input calldata sell, Input calldata buy)
 
         // 发出事件
         emit OrdersMatched(
-            sell.order.listingTime <= buy.order.listingTime ? sell.order.trader : buy.order.trader, // 买单时间大，表明此次是由买家触发，事件中的 maker 是买家。相反的 maker 是卖家表明是有卖家触发的订单。
+            // 买单时间大，表明此次是由买家触发，事件中的 maker 是买家。相反的 maker 是卖家表明是有卖家触发的订单。
+            sell.order.listingTime <= buy.order.listingTime ? sell.order.trader : buy.order.trader, 
             sell.order.listingTime > buy.order.listingTime ? sell.order.trader : buy.order.trader,
             sell.order,
             sellHash,
