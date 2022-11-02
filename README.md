@@ -276,9 +276,61 @@ function _executeTokenTransfer(
 
 要进行批量 listing 的时候，用户需要从订单哈希生成默克尔树并签署树根。最后将订单各自的默克尔路径打包在 extraSignature 中，然后成交的时候再从订单和默克尔路径重构默克尔根，并验证签名。
 
+##### _validateUserAuthorization()
+
+```solidity
+function _validateUserAuthorization(
+        bytes32 orderHash,
+        address trader,
+        uint8 v,
+        bytes32 r,
+        bytes32 s,
+        SignatureVersion signatureVersion,
+        bytes calldata extraSignature
+    ) internal view returns (bool) {
+        bytes32 hashToSign;
+        if (signatureVersion == SignatureVersion.Single) { // 单个签名
+            /* Single-listing authentication: Order signed by trader */
+            hashToSign = _hashToSign(orderHash);
+        } else if (signatureVersion == SignatureVersion.Bulk) { // 批量签名
+            /* Bulk-listing authentication: Merkle root of orders signed by trader */
+            // 从 extraSignature 中解出 merkle tree 的路径
+            (bytes32[] memory merklePath) = abi.decode(extraSignature, (bytes32[]));
+            // 计算 merkle tree 的 root 节点
+            bytes32 computedRoot = MerkleVerifier._computeRoot(orderHash, merklePath);
+            hashToSign = _hashToSignRoot(computedRoot);
+        }
+        // 校验签名
+        return _recover(hashToSign, v, r, s) == trader;
+    }
+```
+
 #### Oracle 签名
 
 此功能允许用户事前明确同意，要求使用最近的区块号对订单进行授权的预言机签名。这启用了一种链下取消方法，预言机可以继续向潜在的接受者提供签名，直到用户请求预言机停止。一段时间后，旧的预言机签名将过期。
 
 要选择事前明确同意，用户必须将 expireTime 设置为 0。为了履行订单，预言机签名必须打包在 extraSignature 中，并且 blockNumber 设置为预言机签名的内容。
 
+##### _validateOracleAuthorization()
+
+```solidity
+function _validateOracleAuthorization(
+        bytes32 orderHash,
+        SignatureVersion signatureVersion,
+        bytes calldata extraSignature,
+        uint256 blockNumber
+    ) internal view returns (bool) {
+        bytes32 oracleHash = _hashToSignOracle(orderHash, blockNumber);
+
+        uint8 v; bytes32 r; bytes32 s;
+        if (signatureVersion == SignatureVersion.Single) {
+            (v, r, s) = abi.decode(extraSignature, (uint8, bytes32, bytes32));
+        } else if (signatureVersion == SignatureVersion.Bulk) {
+            /* If the signature was a bulk listing the merkle path musted be unpacked before the oracle signature. */
+            (bytes32[] memory merklePath, uint8 _v, bytes32 _r, bytes32 _s) = abi.decode(extraSignature, (bytes32[], uint8, bytes32, bytes32));
+            v = _v; r = _r; s = _s;
+        }
+
+        return _recover(oracleHash, v, r, s) == oracle;
+    }
+```
