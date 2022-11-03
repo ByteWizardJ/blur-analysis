@@ -356,6 +356,7 @@ function _validateOracleAuthorization(
 
 批量签名、预言机签名这些新功能会有有很大的应用空间。
 
-目前 Blur 应该还是在很早期的阶段，毕竟他只支持了 ERC721 的限价单的交易方式。不支持 ERC1155 的交易，也不支持拍卖功能。当然这些应该都在他们的开发计划中。通过 MatchingPolicy 可以很方便的添加新的交易策略。
+目前 Blur 应该还是在很早期的阶段，毕竟他只支持了 ERC721 的限价单的交易方式。不支持 ERC1155 的交易，也不支持拍卖功能。当然这些应该都在他们的开发计划中。通过 MatchingPolicy 可以很方便的添加新的交易策略。这一点跟 BendDao 的 Execution Strategy 很像。猜测大概率是借鉴过来的。（关于 BendDao 更多的信息可以查看我的另一篇文章：[BendDAO-analysis](https://github.com/cryptochou/BendDAO-analysis#execution-strategy%E6%89%A7%E8%A1%8C%E7%AD%96%E7%95%A5)）
 
-虽然是很早起的阶段，但是 Blur 目前的交易量大有赶超 Opensea 之势。应该是明确的空投预期起到了很大的作用。毕竟天下苦 Opensea 久矣。
+虽然是很早起的阶段，但是 Blur 目前的交易量大有赶超 Opensea 之势。应该是明确的空投预期起到了很大的作用。毕竟天下苦 Opensea 久矣。🤣
+
