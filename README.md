@@ -2,21 +2,29 @@
 
 ## Blur.io: Marketplace
 
-BlurSwap
-
-clone 自 gem。
-
-处理聚合操作的合约。
-
 https://etherscan.io/address/0x39da41747a83aee658334415666f3ef92dd0d541
 
-## Blur.io: Marketplace 2
+BlurSwap 合约， clone 自 GemSwap。二者代码一致。
 
-BlurExchange
+主要用于处理聚合交易相关逻辑。
+
+## Marketplace 2
 
 https://etherscan.io/address/0x000000000000ad05ccc4f10045630fb830b95127
 
+BlurExchange 合约。Blur 自建的交易市场合约。
+
+BlurExchange 的交易模型于 Opensea 一样是中央订单簿的交易模型，都是由链下的中心化的订单簿和链上的交易组成。
+
+其中链下的订单簿负责存储用户的挂单信息，并对订单进行撮合。最终的成交和转移 NFT 是由 BlurExchange 来负责的。
+
+### 代码地址
+
+Blur 官方没有给出具体的代码仓库地址。不过我在 GitHub 上找到了下面这个代码仓库，应该是之前提交审计的时候留下来的。
+
 https://github.com/code-423n4/2022-10-blur
+
+### 整体架构
 
 ![](exchange_architecture.png)
 
@@ -24,11 +32,16 @@ https://etherscan.io/viewsvg?t=1&a=0x39da41747a83aeE658334415666f3EF92DD0D541
 
 ![](mainnet-0x39da41747a83aee658334415666f3ef92dd0d541.svg)
 
+按照模块可以分为一下几类：
+
+1. BlurExchange：主合约，负责交易的执行。
+2. MatchingPolicy：订单交易策略，负责判断买单、买单是否可以匹配。
+3. PolicyManager：订单交易策略管理者
+4. ExecutionDelegate：负责具体的转移代币的逻辑。
+
 ### (1) BlurExchange
 
-主合约，负责交易的执行。
-
-订单的定义
+#### 订单的定义
 
 ```solidity
 struct Order {
@@ -52,6 +65,8 @@ enum Side { Buy, Sell }
 enum SignatureVersion { Single, Bulk }
 
 ```
+
+#### execute
 
 订单的匹配通过 `execute()` 进行匹配。
 
@@ -334,3 +349,11 @@ function _validateOracleAuthorization(
         return _recover(oracleHash, v, r, s) == oracle;
     }
 ```
+
+## 总结
+
+整体看来 Blur 给人的感觉还是挺简洁的。
+
+批量签名、预言机签名这些新功能会有有很大的应用空间。
+
+目前 Blur 应该还是在很早期的阶段，毕竟他只支持了 ERC721 的限价单的交易方式。不支持 ERC1155 的交易，也不支持拍卖功能。当然这些应该都在他们的开发计划中。通过 MatchingPolicy 可以很方便的添加新的交易策略。
