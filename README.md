@@ -4,7 +4,7 @@
 
 https://etherscan.io/address/0x39da41747a83aee658334415666f3ef92dd0d541
 
-BlurSwap 合约， clone 自 GemSwap。二者代码一致。
+BlurSwap 合约， fork 自 GemSwap。二者代码一致。
 
 主要用于处理聚合交易相关逻辑。
 
