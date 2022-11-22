@@ -1,6 +1,26 @@
 # blur-analysis
 
-## Blur.io: Marketplace
+- [blur-analysis](#blur-analysis)
+  - [Marketplace: BlurSwap](#marketplace-blurswap)
+  - [Marketplace 2: BlurExchange](#marketplace-2-blurexchange)
+    - [代码地址](#代码地址)
+    - [整体架构](#整体架构)
+    - [(1) BlurExchange](#1-blurexchange)
+      - [订单的定义](#订单的定义)
+      - [execute](#execute)
+    - [(2) MatchingPolicy](#2-matchingpolicy)
+      - [PolicyManager](#policymanager)
+      - [MatchingPolicy](#matchingpolicy)
+    - [(3) ExecutionDelegate](#3-executiondelegate)
+    - [(4) Signature Authentication](#4-signature-authentication)
+      - [用户签名](#用户签名)
+        - [批量 Listing](#批量-listing)
+        - [\_validateUserAuthorization()](#_validateuserauthorization)
+      - [Oracle 签名](#oracle-签名)
+        - [\_validateOracleAuthorization()](#_validateoracleauthorization)
+  - [总结](#总结)
+
+## Marketplace: BlurSwap
 
 https://etherscan.io/address/0x39da41747a83aee658334415666f3ef92dd0d541
 
@@ -8,7 +28,7 @@ BlurSwap 合约， fork 自 GemSwap。二者代码一致。
 
 主要用于处理聚合交易相关逻辑。
 
-## Marketplace 2
+## Marketplace 2: BlurExchange
 
 https://etherscan.io/address/0x000000000000ad05ccc4f10045630fb830b95127
 
