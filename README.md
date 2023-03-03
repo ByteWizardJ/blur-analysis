@@ -1,5 +1,26 @@
 # blur-analysis
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [1. BlurSwap](#1-blurswap)
+- [2. BlurExchange](#2-blurexchange)
+  - [2.1 代码地址](#21-%E4%BB%A3%E7%A0%81%E5%9C%B0%E5%9D%80)
+  - [2.2 整体架构](#22-%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84)
+  - [2.3 BlurExchange](#23-blurexchange)
+- [3. PolicyManager](#3-policymanager)
+  - [3.1 MatchingPolicy](#31-matchingpolicy)
+- [4. BlurPool](#4-blurpool)
+- [5. Blur Bid](#5-blur-bid)
+  - [5.1 出价](#51-%E5%87%BA%E4%BB%B7)
+  - [5.2 Opensea Offer](#52-opensea-offer)
+  - [5.3 Blur Bid](#53-blur-bid)
+- [6. Seaport 和 版税](#6-seaport-%E5%92%8C-%E7%89%88%E7%A8%8E)
+- [7. 总结](#7-%E6%80%BB%E7%BB%93)
+- [8. 参考](#8-%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## 1. BlurSwap
 
 <https://etherscan.io/address/0x39da41747a83aee658334415666f3ef92dd0d541>
@@ -625,19 +646,184 @@ function _executeTokenTransfer(
 
 其中 StandardPolicyERC721（normal）和 StandardPolicyERC721（oracle）基本逻辑差不多，不同的是 oracle 类型的策略要求必须用于支持 Oracle Authorization 的订单。
 
-SafeCollectionBidPolicyERC721 策略中不对 token id 进行校验而且 canMatchMakerAsk 方法直接 revert。这说明使用这种策略的订单只能进行接受出价（bid），不能直接 listing。这跟 Blur 中的 bid 功能有关。后面再详细介绍。
+SafeCollectionBidPolicyERC721 策略中不对 token id 进行校验而且调用 canMatchMakerAsk 方法直接 revert。这说明使用这种策略的订单只能进行接受出价（bid），不能直接 listing。这跟 Blur 中的 bid 功能有关。
 
 ## 4. BlurPool
 
-Todo
+BlurPool 可以简单看成 WETH 的一个特殊版本。他们的代码有很多地方都是一样的。
 
-## 5. Seaport 和 版税
+BlurPool 特殊之处有以下两点。
 
-Todo
+1. BlurPool 的 `transferFrom()` 函数，只能被 BlurExchange 和 BlurSwap 这两个合约外部调用。
+2. BlurPool 中没有 approve 相关的逻辑。
+
+这些特性看起来很奇怪，其实这都是为 Blur Bid 功能来服务的。我们接下来详细看看 Bid 这一功能。
+
+## 5. Blur Bid
+
+Blur 的 Bid 功能是一个设计相当巧妙的功能，甚至可以说 Blur 就是靠着这个功能完成了对 Opensea 的超越的。下面我们来看看具体的实现方法。
+
+### 5.1 出价
+
+首先我们先要明确一下 NFT 交易中存在的两个交易方向。
+
+一个是挂单，也就是将自己拥有的 NFT 挂到交易市场。然后等待买家来购买。这种交易方向 Opensea 和 Blur 都称之为 Listing。
+
+另一个是出价，也就是自己看上了某个 NFT，然后对这个 NFT 的拥有者发出一个购买请求。如果 NFT 的拥有者觉得价格合适就可以选择接受该出价。这种交易方向在 Opensea 上称之为 Offer，Blur 上称为 Bid。
+
+### 5.2 Opensea Offer
+
+在 Opensea 上对某个 NFT 进行 Offer 需要以下几个步骤:
+
+1. 查询 WETH 余额，如果没有余额需要将 ETH 转换成 WETH。
+2. 授权 WETH (只需要一次)。
+3. 对 Offer 订单进行签名。
+
+如果要取消 Offer 则需要调用 Seaport 合约的 `cancle()` 方法，将 Offer 对应的这个订单的取消状态写入到 Seaport 的成员变量 `_orderStatus` 中，来确保这个订单无法成交。这一步是必须的。具体原因可以看看 上面 BlurExchange 中的 `cancelledOrFilled` 成员变量的解释。由于涉及到修改合约中的数据，因此这一步是需要支付 gas 的。
+
+这里还要解释一下 Opensea 的 Offer 为什么必须使用 WETH，而不是使用 ETH。
+
+我们都知道 WETH 原本作用是为了 ETH 包装成 ERC20 代币。然后就可以使用 ERC20 的一些功能。比如授权和转移。
+
+如果在 Offer 订单中使用 ETH 的话，由于 ETH 无法进行授权操作，因此需要将 ETH 先转移到 Seaport 合约之中，然后再在成交的时候将 ETH 转移给 NFT 拥有者。如果用户想对多个 NFT 进行 Offer 的话就需要先提供出去足额的 ETH。这种方法显然占用了太多的用户的资金。
+
+而使用 WETH 的话，用户只需要将 WETH 授权给 Seaport 合约，而不占用户的资金。用户可以对多个 NFT 进行 Offer。这无疑提高了用户的体验。
+
+### 5.3 Blur Bid
+
+在 Blur 上对 NFT 进行 Bid 需要以下几个步骤:
+
+1. Blur 不能对单个 NFT 进行 Bid，而是要对该 NFT 整个 collection 进行 bid。
+2. 查询 BlurPool 的余额，如果余额为空需要将 ETH 存入 BlurPool 中。
+3. 对 Bid 订单进行签名。
+
+如果想要取消 Bid 订单不需要支付 gas 就能取消。
+
+其实我刚看到这些的时候，对 BlurPool 不需要授权这点很容易立即，但是取消 Bid 订单不需要 gas 就很让人费解了。其实我们只需要将上面内容中的 Oracle Authorization 和 SafeCollectionBidPolicyERC721 串起来就好理解了。
+
+我们通过一个例子来了解具体的实现方法。
+
+https://etherscan.io/tx/0xdd0058f2bfd06bfe6c265cfa01d8082333966a1c7d6a7bd430cfcf7c1ac9f223
+
+#### 5.3.1 解析参数
+
+通过解析交易的数据我们可以了解到调用了这个交易是地址为0x56a6ff5eca020a8ffc67fe7682887ccae12ac2d3 的 EOA 账号调用 BlurExchange（0x000000000000ad05ccc4f10045630fb830b95127） 的 `execute()` 方法。
+
+输入的参数如下
+
+```json
+{
+  "sell": {
+    "order": {
+      "trader": "0x56a6ff5eca020a8ffc67fe7682887ccae12ac2d3",
+      "side": 1,
+      "matchingPolicy": "0x0000000000b92d5d043faf7cecf7e2ee6aaed232",
+      "collection": "0x39ee2c7b3cb80254225884ca001f57118c8f21b6",
+      "tokenId": "3960",
+      "amount": "1",
+      "paymentToken": "0x0000000000a39bb272e79075ade125fd351887ac",
+      "price": "2130000000000000000",
+      "listingTime": "1677644849",
+      "expirationTime": "1677652366",
+      "fees": [
+        {
+          "rate": 333,
+          "recipient": "0xf3b985336fd574a0aa6e02cbe61c609861e923d6"
+        }
+      ],
+      "salt": "114616841359518544842066950455752933050",
+      "extraParams": "0x01"
+    },
+    "v": 0,
+    "r": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "s": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "extraSignature": "0x000000000000000000000000000000000000000000000000000000000000001bc9f1fde1f59a56a5343044a91c595b42f451bf8b13ba1fff391dda90221229f37912e2977ccca951de1612270e3acdb865103f9f44acd807c0f22792a9c07f4d",
+    "signatureVersion": 0,
+    "blockNumber": "16731714"
+  },
+  "buy": {
+    "order": {
+      "trader": "0x14b6e5f84da2febd85d92dd9c2d4aa633cc65e30",
+      "side": 0,
+      "matchingPolicy": "0x0000000000b92d5d043faf7cecf7e2ee6aaed232",
+      "collection": "0x39ee2c7b3cb80254225884ca001f57118c8f21b6",
+      "tokenId": "0",
+      "amount": "1",
+      "paymentToken": "0x0000000000a39bb272e79075ade125fd351887ac",
+      "price": "2130000000000000000",
+      "listingTime": "1677644848",
+      "expirationTime": "1709180849",
+      "fees": [],
+      "salt": "71987771138744249662594339974857147058",
+      "extraParams": "0x01"
+    },
+    "v": 27,
+    "r": "0xc63f4bca4a5fb3802f7f956ad1358e5cf312646d1569f9b16543840444a12e68",
+    "s": "0x1b95f680e148e81ce067764c48d25e68a9df2e2cda9b5c1ffe0e714fb1d126ec",
+    "extraSignature": "0x000000000000000000000000000000000000000000000000000000000000001ca531657f4514cdffa5eff876ba26c236805c48116a9e9b4befc7c0ee8bf190c757ee01dace8d955ccda3dcee4e58c650dc0b3e29b8e9d3caa5a401144874530e",
+    "signatureVersion": 0,
+    "blockNumber": "16731714"
+  }
+}
+```
+
+#### 5.3.2 分析交易方向
+
+sell 订单中 trader 地址与发起这笔交易的地址是一样的，因此这是一笔通过 Blur Bid 的交易。
+
+因为这说明 buy 这个订单是首先生成的，也就是说先有地址为 0x14b6e5f84da2febd85d92dd9c2d4aa633cc65e30 的账户提出了一个报价，然后才有 0x56a6ff5eca020a8ffc67fe7682887ccae12ac2d3 的账户接受了这个报价，然后 0x56a6ff5eca020a8ffc67fe7682887ccae12ac2d3 这个账户调用 BlurExchange 进行成单的。
+
+因此 Bid 订单就是 buy 这个参数中的订单。
+
+#### 5.3.3 分析 Bid 订单
+
+Bid 订单的参数中有两个方面需要特殊注意。
+
+##### 5.3.3.1 MatchingPolicy
+
+该订单中的 matchingPolicy 地址为 0x0000000000b92d5d043faf7cecf7e2ee6aaed232，是 SafeCollectionBidPolicyERC721 的交易策略。
+
+我们上面了解过，这种交易策略不对 token id 进行校验而且调用该策略的 canMatchMakerAsk 方法直接 revert。这也正好应对了 Blur Bid 的交易要求。
+
+因此该订单中的 tokenId 为 0，不是表示要购买 token id 为 0 的订单。
+
+##### 5.3.3.1 Oracle Authentication
+
+该订单中 extraParams 是 0x01，正好满足 Oracle Authorization 的条件。因此该订单需要进行 Oracle Authorization。
+
+```solidity
+// 如果订单的 extraParams 中有数据，且第一个元素是 1 表示需要进行 Oracle Authorization
+if (order.order.extraParams.length > 0 && order.order.extraParams[0] == 0x01) {
+    ...
+}
+```
+
+我们在上面提到过 Oracle Authentication 这一步骤中校验的签名是通过链下 Blur 中心化服务器上生成的。如果提交 Bid 订单的用户在该订单成交之前告诉 Blur 取消该订单，则 Blur 就不再生成签名。这样一来这个 Bid 订单就无法在进行成交了。这也是为什么 Blur Bid 能不消耗 gas 进行取消的原因。
+
+## 6. Opensea 和 版税
+
+提到 Opensea 和 Blur 的版税，那可是一个相当精彩的故事。我们先来梳理一下事情的来龙去脉。
+
+1. 2022 年 11 月，OpenSea 实施了一项新政策：如果项目方想要收取版税必须集成 Opensea 的链上版税强制执行工具。这个工具的本质是一个黑名单。集成该工具的 NFT 无法在一些零版税或者低版税的交易平台上交易。Blur 当时实行的是 0 版税 0 手续费的政策，因此也在这个黑名单中。（这个工具的具体实现可以参考我之前写过的这篇[文章](https://github.com/cryptochou/opensea-creator-fees))。
+2. Opensea 实时这一策略的目的是司马昭之心路人皆知了，摆明了是针对 Blur 的。不过这一策略被证明是有效的。比如 Yuga 的 Sewer Pass 等新系列都选择与 OpenSea 结盟并阻止在 Blur 上的交易。
+3. 这时候 Blur 承诺对新的 NFT 项目收取版税，并要求 Opensea 将他们从黑名单中移出。
+4. 然而，OpenSea 回复说，其政策要求对所有 NFT项目征收版税，而不仅仅是实施黑名单的新 NFT项目。Blur 突围失败。
+5. 这时候大多数的创作者都站队了 Opensea。
+6. 本以为事情就这样下去了，然而精彩的来了。Blur 直接利用 Opensea 的 Seaport 合约创建了一个新的交易系统。对于集成了黑名单工具并且将 Blur 拉黑的 NFT 项目，Blur 直接通过 Seaport 进行交易。其他的 NFT项目则继续走 BlurExchange 进行交易(具体逻辑见下图)。你 Opensea 总不能把 Seaport 也拉进黑名单吧。Blur 突围成功。
+7. Blur 的反击。随着 Blur 的空投，Blur 上的交易量大幅超过了 Opensea。这时候如果一个新的 NFT 项目把 Blur 加入黑名单的话就无法在 BlurExchange 上进行 Bid 了。而 Bid 在空投中计算积分的很重要的一步。这时候越来越多的 NFT 项目取消了 Blur 的黑名单。
+8. Blur 的进一步反击。Blur 发出声明如果将 OpenSea 加入到黑名单中则可以在 Blur 上收取全部版税。同时可以增加空投奖励。与此同时，呼吁大家不要将 OpenSea 和 Blur 放到黑名单中。并向 Opensea 喊话取消 Blur 的黑名单。
+9. Opensea 妥协了，将 Blur 移出了黑名单。并宣布限时 0 手续费的活动。
+10. Blur win！
 
 ![source: https://twitter.com/pandajackson42/status/1620081586237767680/photo/1](FnuuanrXEAAYQch.jpeg)
 
-## 6. 总结
+Twitter 上的 Panda Jackson 的几个配图很生动了描述了 Opensea 当前的处境。
+
+![](FnutRuVWAAAOaVY.jpeg)
+![](FnuuepzWAAE4Hx4.png)
+![](FnuunmuXkAAS-bssq.jpeg)
+
+## 7. 总结
 
 整体看来 Blur 给人的感觉还是挺简洁的。
 
@@ -649,13 +835,15 @@ Todo
 
 ---
 
-2023 03-01 Updata
+2023 03-03 Updata
 
-Todo
+5 个月过去了，Blur 的合约添加了一些新的功能，我这里重新梳理了一下 BlurExchange 合约。也从头到尾梳理了一遍 Opensea 与 Blur 围绕版税做的骚操作。希望对你能有所帮助。
 
+从目前来看可以说 Blur 是超越 Opensea 了，不论是从热度还是交易量来看。这期间他突破 Opensea 构筑的马奇诺防线的骚操作也让人直呼厉害。同时 Blur Bid 的功能也为 NFT 交易市场注入了大量的流动性。应该来说 Blur 为 NFT 交易市场带来了新的活力。
 
+当然 Opensea 也并非一无是处。首先 Opensea 的界面相对 Blur 来说还是更容易让 NFT 新手的接受的。其次 Seaport 合约也可以称为是 NFT 基础建设级别的工具，支撑起了 ensvision 等一众垂直领域的 NFT 交易市场。这点也是很值得称道的。
 
-## 7. 参考
+## 8. 参考
 
-https://twitter.com/pandajackson42/status/1620081518575235073
-https://mirror.xyz/blurdao.eth/vYOjzk4cQCQ7AtuJWWiZPoNZ04YKQmTMsos0NNq_hYs
+1. https://twitter.com/pandajackson42/status/1620081518575235073
+2. https://mirror.xyz/blurdao.eth/vYOjzk4cQCQ7AtuJWWiZPoNZ04YKQmTMsos0NNq_hYs
