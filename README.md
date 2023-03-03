@@ -15,7 +15,7 @@
   - [5.1 出价](#51-%E5%87%BA%E4%BB%B7)
   - [5.2 Opensea Offer](#52-opensea-offer)
   - [5.3 Blur Bid](#53-blur-bid)
-- [6. Seaport 和 版税](#6-seaport-%E5%92%8C-%E7%89%88%E7%A8%8E)
+- [6. Opensea 和 版税](#6-opensea-%E5%92%8C-%E7%89%88%E7%A8%8E)
 - [7. 总结](#7-%E6%80%BB%E7%BB%93)
 - [8. 参考](#8-%E5%8F%82%E8%80%83)
 
@@ -837,7 +837,7 @@ Twitter 上的 Panda Jackson 的几个配图很生动了描述了 Opensea 当前
 
 2023 03-03 Updata
 
-5 个月过去了，Blur 的合约添加了一些新的功能，我这里重新梳理了一下 BlurExchange 合约。也从头到尾梳理了一遍 Opensea 与 Blur 围绕版税做的骚操作。希望对你能有所帮助。
+5 个月过去了，Blur 的合约添加了一些新的功能，我这里重新梳理了一下 BlurExchange 合约。之前没怎么在意的 Oracle Authorization 没想到被 Blur 玩出了这么个玩法。
 
 从目前来看可以说 Blur 是超越 Opensea 了，不论是从热度还是交易量来看。这期间他突破 Opensea 构筑的马奇诺防线的骚操作也让人直呼厉害。同时 Blur Bid 的功能也为 NFT 交易市场注入了大量的流动性。应该来说 Blur 为 NFT 交易市场带来了新的活力。
 
@@ -847,3 +847,12 @@ Twitter 上的 Panda Jackson 的几个配图很生动了描述了 Opensea 当前
 
 1. https://twitter.com/pandajackson42/status/1620081518575235073
 2. https://mirror.xyz/blurdao.eth/vYOjzk4cQCQ7AtuJWWiZPoNZ04YKQmTMsos0NNq_hYs
+
+若果感觉本文对你有帮助的话，欢迎打赏：0x1E1eFeb696Bc8F3336852D9FB2487FE6590362BF。
+
+
+
+
+
+
+
