@@ -848,7 +848,7 @@ Twitter 上的 Panda Jackson 的几个配图很生动了描述了 Opensea 当前
 1. https://twitter.com/pandajackson42/status/1620081518575235073
 2. https://mirror.xyz/blurdao.eth/vYOjzk4cQCQ7AtuJWWiZPoNZ04YKQmTMsos0NNq_hYs
 
-若果感觉本文对你有帮助的话，欢迎打赏：0x1E1eFeb696Bc8F3336852D9FB2487FE6590362BF。
+如果感觉本文对您有帮助的话，欢迎打赏：0x1E1eFeb696Bc8F3336852D9FB2487FE6590362BF。
 
 
 
