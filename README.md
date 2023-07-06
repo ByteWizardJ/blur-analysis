@@ -685,7 +685,7 @@ Blur 的 Bid 功能是一个设计相当巧妙的功能，甚至可以说 Blur �
 
 这里还要解释一下 Opensea 的 Offer 为什么必须使用 WETH，而不是使用 ETH。
 
-我们都知道 WETH 原本作用是为了 ETH 包装成 ERC20 代币。然后就可以使用 ERC20 的一些功能。比如授权和转移。
+这是因为 WETH 原本作用是为了 ETH 包装成 ERC20 代币。然后就可以使用 ERC20 的一些功能。比如授权和转移。
 
 如果在 Offer 订单中使用 ETH 的话，由于 ETH 无法进行授权操作，因此需要将 ETH 先转移到 Seaport 合约之中，然后再在成交的时候将 ETH 转移给 NFT 拥有者。如果用户想对多个 NFT 进行 Offer 的话就需要先提供出去足额的 ETH。这种方法显然占用了太多的用户的资金。
 
@@ -695,13 +695,13 @@ Blur 的 Bid 功能是一个设计相当巧妙的功能，甚至可以说 Blur �
 
 在 Blur 上对 NFT 进行 Bid 需要以下几个步骤:
 
-1. Blur 不能对单个 NFT 进行 Bid，而是要对该 NFT 整个 collection 进行 bid。
+1. 选择某个 collection（Blur 不能对单个 NFT 进行 Bid，而是要对该 NFT 整个 collection 进行 bid）。
 2. 查询 BlurPool 的余额，如果余额为空需要将 ETH 存入 BlurPool 中。
 3. 对 Bid 订单进行签名。
 
 如果想要取消 Bid 订单不需要支付 gas 就能取消。
 
-其实我刚看到这些的时候，对 BlurPool 不需要授权这点很容易立即，但是取消 Bid 订单不需要 gas 就很让人费解了。其实我们只需要将上面内容中的 Oracle Authorization 和 SafeCollectionBidPolicyERC721 串起来就好理解了。
+这一点曾经让我很费解，毕竟 Opensea和 Blur 自己的交易合约中取消订单都是必须的（具体原因可以参考 cancelledOrFilled 的介绍）。其实我们只需要将上面内容中的 Oracle Authorization 和 SafeCollectionBidPolicyERC721 串起来就好理解了。根本原因是因为 Oracle Authentication 这一步骤中校验的签名是通过链下 Blur 中心化服务器上生成的。
 
 我们通过一个例子来了解具体的实现方法。
 
